@@ -12,7 +12,7 @@
         <a href="dashboard.php" title="<?= $lang['home'] ?>"><i>🏠</i><span><?= $lang['home'] ?></span></a>
         <a href="users.php" title="<?= $lang['users'] ?>"><i>👥</i><span><?= $lang['users'] ?></span></a>
         <a href="manage_accounts.php" title="Hisoblar Boshqaruvi"><i>🔐</i><span>Hisoblar Boshqaruvi</span></a>
-        <a href="chat.php" title="Chat Boshqaruvi"><i>💬</i><span>Chat Boshqaruvi</span></a>
+        <a href="achat.php" title="Chat Boshqaruvi"><i>💬</i><span>Chat Boshqaruvi</span></a>
         <a href="subjects.php" title="Fanlar & O'qituvchilar"><i>🏫</i><span>Fanlar & O'qituvchilar</span></a>
         <a href="grades.php" title="Baholar Boshqaruvi"><i>📊</i><span>Baholar Boshqaruvi</span></a>
         <a href="schedule.php" title="Dars Jadvali"><i>📅</i><span>Dars Jadvali</span></a>

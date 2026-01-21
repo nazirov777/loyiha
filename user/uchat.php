@@ -2,12 +2,82 @@
 session_start();
 require '../config/db.php';
 require '../config/lang_init.php';
+require '../config/notifications_helper.php';
 
 if (!isset($_SESSION['user_id'])) {
+    if (isset($_GET['action']) || isset($_POST['action'])) {
+        echo "Unauthorized"; exit;
+    }
     header("Location: ../login.php");
     exit;
 }
 $my_id = $_SESSION['user_id'];
+
+// AJAX Handler: Get Messages
+if (isset($_GET['action']) && $_GET['action'] === 'get_messages') {
+    $group_id = isset($_GET['group_id']) ? $_GET['group_id'] : null;
+    $has_group_col = false;
+    try {
+        $pdo->query("SELECT group_id FROM messages LIMIT 1");
+        $has_group_col = true;
+    } catch (PDOException $e) {}
+
+    $sql = "SELECT m.id as msg_id, m.message, m.created_at, u.name, u.role, u.id as user_id" . ($has_group_col ? ", g.name as group_name" : "") . " 
+            FROM messages m 
+            JOIN users u ON m.user_id = u.id";
+
+    if ($has_group_col) {
+        $sql .= " LEFT JOIN `groups` g ON m.group_id = g.id";
+    }
+
+    if ($has_group_col && $group_id === 'all') {
+        // No filter
+    } elseif ($has_group_col && $group_id) {
+        $sql .= " WHERE m.group_id = :gid";
+    } else {
+        if ($has_group_col) {
+            $sql .= " WHERE m.group_id IS NULL";
+        }
+    }
+    $sql .= " ORDER BY m.created_at ASC";
+    $stmt = $pdo->prepare($sql);
+    if ($has_group_col && $group_id && $group_id !== 'all') {
+        $stmt->bindParam(':gid', $group_id);
+    }
+    $stmt->execute();
+    header('Content-Type: application/json');
+    echo json_encode($stmt->fetchAll());
+    exit;
+}
+
+// AJAX Handler: Send Message
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'send_message') {
+    $message = trim(isset($_POST['message']) ? $_POST['message'] : '');
+    $group_id = isset($_POST['group_id']) ? $_POST['group_id'] : null;
+
+    if (!empty($message)) {
+        try {
+            $has_group_col = false;
+            try { $pdo->query("SELECT group_id FROM messages LIMIT 1"); $has_group_col = true; } catch (PDOException $e) {}
+
+            if ($has_group_col) {
+                $stmt = $pdo->prepare("INSERT INTO messages (user_id, message, group_id) VALUES (?, ?, ?)");
+                $stmt->execute([$my_id, $message, $group_id]);
+            } else {
+                $stmt = $pdo->prepare("INSERT INTO messages (user_id, message) VALUES (?, ?)");
+                $stmt->execute([$my_id, $message]);
+            }
+            
+            if ($_SESSION['role'] !== 'admin') {
+                $sender_name = isset($_SESSION['name']) ? $_SESSION['name'] : 'Foydalanuvchi';
+                $context = $group_id ? "Guruhda" : "Umumiy chatda";
+                notifyAdmins($pdo, "Yangi Xabar! 💬", "$sender_name $context yangi xabar yubordi: " . mb_substr($message, 0, 50) . "...", "achat.php");
+            }
+            echo "Sent";
+        } catch (PDOException $e) { echo "Baza xatosi: " . $e->getMessage(); }
+    } else { echo "Xabar bo'sh bo'lishi mumkin emas."; }
+    exit;
+}
 
 // Fetch groups based on role
 if ($_SESSION['role'] === 'teacher') {
@@ -130,11 +200,11 @@ $default_group = !empty($my_groups) ? $my_groups[0]['id'] : 'global';
         }
 
         function loadMessages() {
-            let url = 'get_messages.php';
+            let url = 'uchat.php?action=get_messages';
             let activeId = (currentChatMode === 'global') ? null : currentGroupId;
             
             if (activeId) {
-                url += '?group_id=' + activeId;
+                url += '&group_id=' + activeId;
             }
             
             $.get(url, function(data) {
@@ -165,11 +235,11 @@ $default_group = !empty($my_groups) ? $my_groups[0]['id'] : 'global';
             }
 
             if(msg.trim() !== '') {
-                let data = {message: msg};
+                let data = {action: 'send_message', message: msg};
                 if (activeId) {
                     data.group_id = activeId;
                 }
-                $.post('send_message.php', data, function(res) {
+                $.post('uchat.php', data, function(res) {
                     if (res === 'Sent') {
                         $('#message-input').val('');
                         loadMessages();

@@ -28,7 +28,7 @@ if (isset($_POST['message']) && isset($_SESSION['user_id'])) {
             if ($_SESSION['role'] !== 'admin') {
                 $sender_name = isset($_SESSION['name']) ? $_SESSION['name'] : 'Foydalanuvchi';
                 $context = $group_id ? "Guruhda" : "Umumiy chatda";
-                notifyAdmins($pdo, "Yangi Xabar! 💬", "$sender_name $context yangi xabar yubordi: " . mb_substr($message, 0, 50) . "...", "chat.php");
+                notifyAdmins($pdo, "Yangi Xabar! 💬", "$sender_name $context yangi xabar yubordi: " . mb_substr($message, 0, 50) . "...", "achat.php");
             }
             
             echo "Sent";

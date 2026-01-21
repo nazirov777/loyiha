@@ -17,7 +17,7 @@
         <a href="articles.php" title="<?= $lang['manuals'] ?>"><i>📚</i><span><?= $lang['manuals'] ?></span></a>
         <a href="projects.php" title="<?= $lang['projects'] ?>"><i>🚀</i><span><?= $lang['projects'] ?></span></a>
         <a href="contracts.php" title="<?= $lang['contracts'] ?>"><i>📄</i><span><?= $lang['contracts'] ?></span></a>
-        <a href="chat.php" title="<?= $lang['chat'] ?>"><i>💬</i><span><?= $lang['chat'] ?></span></a>
+        <a href="uchat.php" title="<?= $lang['chat'] ?>"><i>💬</i><span><?= $lang['chat'] ?></span></a>
         <a href="../logout.php" title="<?= $lang['logout'] ?>"><i>🚪</i><span><?= $lang['logout'] ?></span></a>
     </div>
 </div>

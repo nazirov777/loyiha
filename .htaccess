@@ -1,0 +1,8 @@
+# Allow access to all files
+Require all granted
+
+# Disable directory listing
+Options -Indexes
+
+# Set default index file
+DirectoryIndex index.php

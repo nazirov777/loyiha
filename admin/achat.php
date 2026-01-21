@@ -21,8 +21,48 @@ try {
     }
 }
 
-// Handle Admin Actions
+// AJAX Handler: Get Messages
+if (isset($_GET['action']) && $_GET['action'] === 'get_messages') {
+    $group_id = isset($_GET['group_id']) ? $_GET['group_id'] : null;
+    $has_group_col = false;
+    try { $pdo->query("SELECT group_id FROM messages LIMIT 1"); $has_group_col = true; } catch (PDOException $e) {}
+
+    $sql = "SELECT m.id as msg_id, m.message, m.created_at, u.name, u.role, u.id as user_id" . ($has_group_col ? ", g.name as group_name" : "") . " 
+            FROM messages m 
+            JOIN users u ON m.user_id = u.id";
+    if ($has_group_col) $sql .= " LEFT JOIN `groups` g ON m.group_id = g.id";
+    if ($has_group_col && $group_id === 'all') { /* No filter */ } 
+    elseif ($has_group_col && $group_id) $sql .= " WHERE m.group_id = :gid";
+    else if ($has_group_col) $sql .= " WHERE m.group_id IS NULL";
+    
+    $sql .= " ORDER BY m.created_at ASC";
+    $stmt = $pdo->prepare($sql);
+    if ($has_group_col && $group_id && $group_id !== 'all') $stmt->bindParam(':gid', $group_id);
+    $stmt->execute();
+    header('Content-Type: application/json');
+    echo json_encode($stmt->fetchAll());
+    exit;
+}
+
+// Handle Admin Actions & Send Message
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (isset($_POST['action']) && $_POST['action'] === 'send_message') {
+        $msg_text = trim(isset($_POST['message']) ? $_POST['message'] : '');
+        $group_id = isset($_POST['group_id']) ? $_POST['group_id'] : null;
+        if (!empty($msg_text)) {
+            $has_group_col = false;
+            try { $pdo->query("SELECT group_id FROM messages LIMIT 1"); $has_group_col = true; } catch (PDOException $e) {}
+            if ($has_group_col) {
+                $stmt = $pdo->prepare("INSERT INTO messages (user_id, message, group_id) VALUES (?, ?, ?)");
+                $stmt->execute([$_SESSION['user_id'], $msg_text, $group_id]);
+            } else {
+                $stmt = $pdo->prepare("INSERT INTO messages (user_id, message) VALUES (?, ?)");
+                $stmt->execute([$_SESSION['user_id'], $msg_text]);
+            }
+            echo "Sent";
+        } else { echo "Xabar bo'sh bo'lishi mumkin emas."; }
+        exit;
+    }
     if (isset($_POST['delete_msg'])) {
         $msg_id = $_POST['msg_id'];
         $pdo->prepare("DELETE FROM messages WHERE id = ?")->execute([$msg_id]);
@@ -44,7 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             $message = "Chat tarixi tozalandi!";
         } catch (PDOException $e) {
-            $message = "Xato: Ma'lumotlar bazasi yangilanmagan bo'lishi mumkin. Iltimos, update_db_v3.php ni ishga tushiring.";
+            $message = "Xato: Ma'lumotlar bazasi yangilanmagan.";
         }
     }
 }
@@ -141,9 +181,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         function loadMessages() {
-            let url = '../user/get_messages.php';
+            let url = 'achat.php?action=get_messages';
             if (currentGroup !== 'global') {
-                url += '?group_id=' + currentGroup;
+                url += '&group_id=' + currentGroup;
             }
             $.get(url, function(data) {
                 let messages = (typeof data === 'object') ? data : JSON.parse(data);
@@ -189,7 +229,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         function deleteMsg(id) {
             if(confirm('Ushbu xabarni o\'chirmoqchimisiz?')) {
-                $.post('chat.php', {delete_msg: 1, msg_id: id}, function() {
+                $.post('achat.php', {delete_msg: 1, msg_id: id}, function() {
                     loadMessages();
                 });
             }
@@ -198,7 +238,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         function editMsg(id, oldText) {
             let newText = prompt('Xabarni tahrirlang:', oldText);
             if (newText !== null && newText.trim() !== '') {
-                $.post('chat.php', {edit_msg: 1, msg_id: id, text: newText}, function() {
+                $.post('achat.php', {edit_msg: 1, msg_id: id, text: newText}, function() {
                     loadMessages();
                 });
             }
@@ -211,11 +251,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     alert('Iltimos, javob yozish uchun aniq bir guruhni yoki Umumiy chatni tanlang.');
                     return;
                 }
-                let data = {message: msg};
+                let data = {action: 'send_message', message: msg};
                 if (currentGroup !== 'global' && currentGroup !== 'all') {
                     data.group_id = currentGroup;
                 }
-                $.post('../user/send_message.php', data, function(res) {
+                $.post('achat.php', data, function(res) {
                     if (res === 'Sent') {
                         $('#admin-msg-input').val('');
                         loadMessages();
