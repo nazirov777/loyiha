@@ -1,8 +1,8 @@
 <?php
-$host = 'localhost';
-$db_name = 'eduvision';
-$username = 'root';
-$password = ''; // Default OpenServer/XAMPP password is empty
+$host = getenv('DB_HOST') ?: 'localhost';
+$db_name = getenv('DB_NAME') ?: 'eduvision';
+$username = getenv('DB_USER') ?: 'root';
+$password = getenv('DB_PASS') !== false ? getenv('DB_PASS') : ''; // Default OpenServer/XAMPP password is empty
 
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$db_name;charset=utf8", $username, $password);
